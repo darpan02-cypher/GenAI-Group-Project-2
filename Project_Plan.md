@@ -30,7 +30,7 @@ Autonomous CLI coding agent: agentic loop + LLM tool calling + MCP client connec
 **Shared (everyone):** diagrams, README, report, demo, LLM comparison, RAG evaluation.
 
 ## Working rules
-- `main` is protected. Feature branches + PRs, 1 reviewer (buddy).
+- main is there. Feature branches + PRs, can be merged in our main, 1 reviewer (buddy).
 - Planning docs (this plan, architecture/state/sequence diagrams, specs) are committed **before** any implementation. Commit history must show this.
 - Define interfaces up front so work runs in parallel: `LLMProvider.chat(messages, tools)`, `MCPClient.list_tools()/call_tool()`, `rag_search(query, k)` MCP tool.
 - 15-min sync twice a week (suggest Mon + Wed) plus async chat. Blockers get posted same day.
