@@ -10,7 +10,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # then add your GROQ_API_KEY
 ```
-For local models, install [Ollama](https://ollama.com) and run `ollama pull qwen2.5-coder:7b`.
+For local models, install [Ollama](https://ollama.com) and run `ollama pull qwen2.5-coder:1.5b`.
 
 ## Usage
 ```
