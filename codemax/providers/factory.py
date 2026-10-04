@@ -16,7 +16,7 @@ def make_provider(name: str | None = None) -> LLMProvider:
         if not os.getenv("GROQ_API_KEY"):
             raise RuntimeError("GROQ_API_KEY is not set (put it in .env)")
         model = ChatGroq(
-            model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
             temperature=0,
         )
         provider = LangChainProvider(model)
