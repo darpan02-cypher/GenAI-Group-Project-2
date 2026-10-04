@@ -5,10 +5,20 @@
 > Status: planning. See [SPEC.md](SPEC.md) and [PLAN.md](PLAN.md).
 
 ## Setup
-_TODO: filled in during implementation._
+```
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # then add your GROQ_API_KEY
+```
+For local models, install [Ollama](https://ollama.com) and run `ollama pull qwen2.5-coder:7b`.
 
 ## Usage
-_TODO_
+```
+python -m codemax                    # Groq, confirm mode
+python -m codemax --provider ollama  # local model
+python -m codemax --auto             # tools run without asking
+```
+In the REPL: `/auto`, `/confirm`, `/help`, `/exit`. Tests: `pytest`.
 
 ## Configuration
 _TODO: env vars (e.g. GROQ_API_KEY), Ollama model, confirm/auto mode._
