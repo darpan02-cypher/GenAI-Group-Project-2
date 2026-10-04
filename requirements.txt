@@ -1,0 +1,14 @@
+# LLM providers (LangChain abstraction)
+langchain-core
+langchain-groq
+langchain-ollama
+
+# CLI
+rich
+prompt_toolkit
+
+# Config
+python-dotenv
+
+# Tests
+pytest
