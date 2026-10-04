@@ -18,7 +18,8 @@ python -m codemax                    # Groq, confirm mode
 python -m codemax --provider ollama  # local model
 python -m codemax --auto             # tools run without asking
 ```
-In the REPL: `/auto`, `/confirm`, `/help`, `/exit`. Tests: `pytest`.
+In the REPL: `/auto`, `/confirm`, `/tools`, `/help`, `/exit`.
+On start, CodeMax launches the MCP servers (needs Node/npx) and loads their tools automatically. Tests: `pytest`.
 
 ## Configuration
 _TODO: env vars (e.g. GROQ_API_KEY), Ollama model, confirm/auto mode._

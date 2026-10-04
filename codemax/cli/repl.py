@@ -1,5 +1,6 @@
 """Interactive REPL: banner, prompt, slash commands, runs the agent per task."""
 import argparse
+import os
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import InMemoryHistory
@@ -8,6 +9,8 @@ from rich.panel import Panel
 
 from codemax.agent.loop import Agent, AgentConfig
 from codemax.cli.ui import RichUI
+from codemax.mcp_client.client import MCPClient
+from codemax.mcp_client.config import default_servers
 from codemax.providers.factory import make_provider
 from codemax.tools.builtin import builtin_tools
 
@@ -15,6 +18,7 @@ BANNER = "[bold cyan]CodeMax[/bold cyan] - autonomous coding assistant"
 HELP = """[bold]Commands[/bold]
   /auto      switch to auto-execute (tools run without asking)
   /confirm   switch to confirm-before-execute (default)
+  /tools     list loaded tools (built-in and MCP)
   /help      show this help
   /exit      quit"""
 
@@ -32,8 +36,19 @@ def main() -> None:
         console.print(f"[red]Could not start provider: {e}[/red]")
         raise SystemExit(1)
 
+    # Start MCP servers and load their tools dynamically.
+    mcp = MCPClient(default_servers(os.getcwd()))
+    with console.status("[cyan]Connecting to MCP servers...", spinner="dots"):
+        mcp_tools = mcp.connect()
+    for name in mcp.server_names():
+        count = sum(1 for t in mcp_tools if t.name.startswith(f"{name}__"))
+        console.print(f"[green]MCP connected:[/green] {name} ({count} tools)")
+    for name, err in mcp.errors.items():
+        console.print(f"[red]MCP failed:[/red] {name} - {err}")
+
+    all_tools = builtin_tools() + mcp_tools
     config = AgentConfig(auto_execute=args.auto)
-    agent = Agent(provider, builtin_tools(), RichUI(console), config)
+    agent = Agent(provider, all_tools, RichUI(console), config)
 
     def mode() -> str:
         return "auto-execute" if config.auto_execute else "confirm"
@@ -53,6 +68,10 @@ def main() -> None:
             break
         if text == "/help":
             console.print(HELP)
+        elif text == "/tools":
+            for t in all_tools:
+                flag = "confirm" if t.needs_confirm else "free"
+                console.print(f"  {t.name} [dim]({flag})[/dim]")
         elif text == "/auto":
             config.auto_execute = True
             console.print("[yellow]Auto-execute ON: tools run without asking.[/yellow]")
@@ -66,6 +85,7 @@ def main() -> None:
                 console.print("\n[yellow]Interrupted.[/yellow]")
             except Exception as e:  # provider/network errors: report, keep the REPL alive
                 console.print(f"[red]Error: {type(e).__name__}: {e}[/red]")
+    mcp.close()
     console.print("Bye.")
 
 

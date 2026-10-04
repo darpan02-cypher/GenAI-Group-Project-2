@@ -3,6 +3,9 @@ langchain-core
 langchain-groq
 langchain-ollama
 
+# MCP client
+mcp
+
 # CLI
 rich
 prompt_toolkit
