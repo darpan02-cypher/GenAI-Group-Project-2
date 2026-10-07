@@ -13,6 +13,15 @@ challenges and next steps. Total time: about 5 minutes.
 - [ ] Terminal font large, dark theme, window wide (tool panels are 80+ columns)
 - [ ] Backup: a screen recording of a successful run, in case the network fails
 
+## Token budget (read this: it decides whether the demo works)
+Groq's free tier is limited per model: **8,000 tokens/minute and 200,000 tokens/day**. One agent turn costs
+about 2,500+ tokens (tool schemas are re-sent every call), so a full task is roughly 10,000 to 30,000 tokens.
+- Do NOT rehearse repeatedly on the demo day's key. Each model has its own daily pool, so rehearse on a
+  different model (`GROQ_MODEL=openai/gpt-oss-20b`) and keep `openai/gpt-oss-120b` fresh for the demo.
+- The daily limit resets on a rolling window (about 10 minutes of headroom returned after hitting it).
+- A key with Groq Dev Tier, or a teammate's separate key, removes the problem.
+- If the agent prints "Rate limit needs ~N min", stop and switch model; do not wait on stage.
+
 ## Flow
 
 ### 1. Introduce (30 s)
