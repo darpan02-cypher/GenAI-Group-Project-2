@@ -32,7 +32,7 @@ from the working directory above. Built-in tools accept relative paths."""
 PROVIDER_RETRY_NUDGE = ("Your last response could not be processed ({error}). Try again, "
                         "and make sure any tool call arguments are valid JSON.")
 
-MAX_RATE_LIMIT_WAIT = 30  # seconds; never sleep longer than this per retry
+MAX_RATE_LIMIT_WAIT = 30  # seconds; a longer wait (e.g. a daily token cap) is not worth sleeping on
 
 
 def rate_limit_wait(error: Exception) -> float | None:
@@ -48,7 +48,7 @@ def rate_limit_wait(error: Exception) -> float | None:
         return 10.0
     minutes, secs, unit = m.groups()
     wait = float(secs) / (1000 if unit == "ms" else 1) + 60 * int(minutes or 0)
-    return min(wait + 1, MAX_RATE_LIMIT_WAIT)
+    return wait + 1
 
 
 DENIED_MESSAGE = "The user denied this tool call. Do not retry it; choose another approach or ask."
@@ -116,7 +116,12 @@ class Agent:
                     self.ui.on_notice(f"LLM call failed: {type(e).__name__}: {e}")
                     return None
                 wait = rate_limit_wait(e)
-                if wait is not None:  # rate limit: just wait, the conversation is fine
+                if wait is not None and wait > MAX_RATE_LIMIT_WAIT:
+                    self.ui.on_notice(
+                        f"Rate limit needs ~{wait/60:.0f} min (daily token cap?). Stopping. "
+                        "Wait, or switch model/provider (GROQ_MODEL, --provider ollama).")
+                    return None
+                if wait is not None:  # short rate limit: just wait, the conversation is fine
                     self.ui.on_notice(f"Rate limited; waiting {wait:.0f}s then retrying...")
                     time.sleep(wait)
                     continue

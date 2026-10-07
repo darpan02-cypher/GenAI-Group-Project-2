@@ -128,7 +128,7 @@ def test_rate_limit_wait_parsing():
     assert rate_limit_wait(RuntimeError("boom")) is None
     assert rate_limit_wait(RuntimeError("429 Rate limit reached. Please try again in 6.5s.")) == 7.5
     assert rate_limit_wait(RuntimeError("rate limit ... try again in 500ms")) == 1.5
-    assert rate_limit_wait(RuntimeError("rate limit ... try again in 5m2.0s")) == 30  # capped
+    assert rate_limit_wait(RuntimeError("rate limit ... try again in 5m2.0s")) == 303  # not capped here; the loop decides
 
 
 def test_long_tool_results_are_truncated():
