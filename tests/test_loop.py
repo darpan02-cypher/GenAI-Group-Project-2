@@ -85,9 +85,53 @@ def test_unknown_tool_is_reported_not_crashed():
     assert "unknown tool" in agent.messages[-2].content
 
 
+class FlakyProvider(FakeProvider):
+    """Raises on the first call, then behaves normally."""
+    def chat(self, messages, tools, on_token=None):
+        if not getattr(self, "failed", False):
+            self.failed = True
+            raise RuntimeError("Failed to parse tool call arguments as JSON")
+        return super().chat(messages, tools, on_token)
+
+
+def test_provider_error_is_retried():
+    ui = FakeUI()
+    agent = Agent(FlakyProvider([AIMessage(content="recovered")]), builtin_tools(), ui)
+    assert agent.run("x") == "recovered"
+    assert any(e[0] == "notice" and "retrying" in e[1] for e in ui.events)
+
+
+def test_provider_error_gives_up_after_retries():
+    class AlwaysFails(FakeProvider):
+        def chat(self, *a, **k):
+            raise RuntimeError("boom")
+    agent = Agent(AlwaysFails([]), builtin_tools(), FakeUI(), AgentConfig(provider_retries=1))
+    assert "kept failing" in agent.run("x")
+
+
+def test_system_prompt_contains_working_directory():
+    import os
+    agent = Agent(FakeProvider([]), builtin_tools(), FakeUI())
+    assert os.getcwd() in agent.messages[0].content
+
+
 def test_max_iterations_guard():
     provider = FakeProvider([call("run_shell", {"command": "true"}, id=str(i)) for i in range(5)])
     ui = FakeUI()
     agent = Agent(provider, builtin_tools(), ui, AgentConfig(max_iterations=3, auto_execute=True))
     assert "max iterations" in agent.run("loop forever")
     assert any(e[0] == "notice" for e in ui.events)
+
+
+def test_rate_limit_wait_parsing():
+    from codemax.agent.loop import rate_limit_wait
+    assert rate_limit_wait(RuntimeError("boom")) is None
+    assert rate_limit_wait(RuntimeError("429 Rate limit reached. Please try again in 6.5s.")) == 7.5
+    assert rate_limit_wait(RuntimeError("rate limit ... try again in 500ms")) == 1.5
+    assert rate_limit_wait(RuntimeError("rate limit ... try again in 5m2.0s")) == 30  # capped
+
+
+def test_long_tool_results_are_truncated():
+    from codemax.tools.base import Tool, MAX_RESULT_CHARS
+    t = Tool("big", "d", {"type": "object", "properties": {}}, lambda: "x" * 20000)
+    assert len(t.run({})) < MAX_RESULT_CHARS + 100

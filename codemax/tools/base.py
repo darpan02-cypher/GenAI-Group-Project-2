@@ -8,6 +8,9 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 
+MAX_RESULT_CHARS = 5000  # every tool result is capped: results are re-sent to the LLM each turn
+
+
 @dataclass
 class Tool:
     name: str
@@ -35,6 +38,9 @@ class Tool:
     def run(self, args: dict[str, Any]) -> str:
         """Run the tool; turn any exception into text so the LLM can react to it."""
         try:
-            return str(self.func(**args))
+            result = str(self.func(**args))
         except Exception as e:  # observe errors instead of crashing the loop
             return f"ERROR: {type(e).__name__}: {e}"
+        if len(result) > MAX_RESULT_CHARS:
+            result = result[:MAX_RESULT_CHARS] + f"\n... [truncated, {len(result) - MAX_RESULT_CHARS} more chars]"
+        return result

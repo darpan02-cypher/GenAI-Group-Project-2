@@ -17,6 +17,7 @@ from mcp.client.stdio import stdio_client
 
 from codemax.tools.base import Tool
 
+MAX_DESCRIPTION_CHARS = 400  # long descriptions eat the LLM's token budget on every call
 CONNECT_TIMEOUT_SECONDS = 90  # first npx run may need to download the server
 
 
@@ -71,7 +72,7 @@ class MCPClient:
             read_only = bool(t.annotations and t.annotations.read_only_hint)
             tools.append(Tool(
                 name=our_name,
-                description=f"[{cfg.name}] {t.description or t.name}",
+                description=f"[{cfg.name}] {(t.description or t.name)[:MAX_DESCRIPTION_CHARS]}",
                 parameters=t.input_schema or {"type": "object", "properties": {}},
                 func=lambda _n=our_name, **kw: self.call_tool(_n, kw),
                 needs_confirm=not read_only,
