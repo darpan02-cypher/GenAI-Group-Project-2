@@ -26,3 +26,12 @@ def test_bad_server_is_reported_not_fatal():
         assert "bad" in client.errors
     finally:
         client.close()
+
+
+def test_excluded_tools_are_not_offered():
+    client = MCPClient([ServerConfig("echo", sys.executable, [SERVER], exclude=frozenset({"echo"}))])
+    try:
+        assert client.connect() == []
+        assert client.errors == {}
+    finally:
+        client.close()

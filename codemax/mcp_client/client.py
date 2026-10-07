@@ -27,6 +27,9 @@ class ServerConfig:
     command: str                     # e.g. "npx"
     args: list[str]
     env: dict[str, str] = field(default_factory=dict)
+    # Tool names (as the server calls them) NOT to offer the LLM. Every tool schema is
+    # re-sent on every LLM call, so dropping redundant ones saves tokens and confusion.
+    exclude: frozenset[str] = frozenset()
 
 
 class MCPClient:
@@ -66,6 +69,8 @@ class MCPClient:
         listing = await session.list_tools()
         tools = []
         for t in listing.tools:
+            if t.name in cfg.exclude:
+                continue
             our_name = f"{cfg.name}__{t.name}"  # prefix avoids name clashes between servers
             self._tool_origin[our_name] = (cfg.name, t.name)
             # Tools the server marks read-only run freely; anything else asks first.
