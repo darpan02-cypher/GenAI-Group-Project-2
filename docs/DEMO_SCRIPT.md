@@ -46,10 +46,11 @@ What to point out as it runs:
 ### 3. Task B: auto mode, filesystem MCP + shell (2 min)
 Type `/auto` (note the yellow warning), then:
 
-> List the files in this folder using the filesystem server, create fizzbuzz.py with a fizzbuzz(n) function and test_fizzbuzz.py with pytest tests, run the tests, and fix anything that fails.
+> Using the filesystem server, list the files in this folder, then create greet.py that prints "Hello from CodeMax" and run it with python3.
 
-Point out: `filesystem__*` tool calls, `run_shell` running pytest, the agent reading a failure and fixing it
-(if it passes first time, say so: the loop only repeats when it needs to). Tools run without prompts in auto mode.
+Point out: the `filesystem__list_directory` call, the file write, `run_shell` running the script, and the agent
+reading the output and finishing. Tools run without prompts in auto mode. This task is deliberately small to
+stay within the Groq token limits.
 
 ### 4. Challenges and next steps (1 min)
 See below. Close with the roadmap.
