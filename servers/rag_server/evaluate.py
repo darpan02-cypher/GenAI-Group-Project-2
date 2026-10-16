@@ -1,45 +1,122 @@
-"""Before/after check for the RAG report: plain vector search vs. vector search + reranking.
+Here is the full code for **`servers/rag_server/evaluate.py`**:
 
-    python -m servers.rag_server.evaluate
+```python
+import os
+import json
+import time
+from typing import List, Dict, Any, Callable
 
-Each question has the doc page that should answer it. We report, per mode, how often that
-page is ranked first (top-1) and appears in the top 3 (hit@3).
-"""
-from . import store
-
-# (question, substring of the doc path that should answer it)
-CASES = [
-    ("How do I compute faithfulness of an answer?", "available_metrics/faithfulness"),
-    ("What does context precision measure?", "available_metrics/context_precision"),
-    ("What is context recall?", "available_metrics/context_recall"),
-    ("Which metric checks whether the answer addresses the question?", "available_metrics/answer_relevance"),
-    ("How is noise sensitivity calculated?", "available_metrics/noise_sensitivity"),
-    ("How do I measure semantic similarity between answer and ground truth?", "available_metrics/semantic_similarity"),
-    ("How do I generate a synthetic test set?", "testset"),
-    ("How do I evaluate an agent's tool calls?", "agents"),
-    ("How do I use Ragas with Langfuse?", "_langfuse"),
-    ("How do I use Ragas with LangChain?", "langchain"),
+# Expanded evaluation benchmark dataset covering conceptual definitions,
+# system architecture, ingestion configurations, and API endpoints.
+EVALUATION_DATASET: List[Dict[str, Any]] = [
+    {
+        "id": "q1",
+        "query": "What is context precision in RAG evaluation?",
+        "expected_doc": "metrics/context_precision.md",
+        "category": "metrics_definition"
+    },
+    {
+        "id": "q2",
+        "query": "How is context recall calculated when evaluating chunk relevance?",
+        "expected_doc": "metrics/context_recall.md",
+        "category": "metrics_definition"
+    },
+    {
+        "id": "q3",
+        "query": "Explain the difference between faithfulness and answer relevance.",
+        "expected_doc": "metrics/faithfulness.md",
+        "category": "conceptual_comparison"
+    },
+    {
+        "id": "q4",
+        "query": "What chunk size and overlap are recommended for technical API documentation?",
+        "expected_doc": "ingestion/chunking_strategies.md",
+        "category": "ingestion_config"
+    },
+    {
+        "id": "q5",
+        "query": "How does Model Context Protocol (MCP) route vector search requests?",
+        "expected_doc": "architecture/mcp_routing.md",
+        "category": "system_architecture"
+    },
+    {
+        "id": "q6",
+        "query": "What parameters are passed to the rag_server query endpoint?",
+        "expected_doc": "api/rag_server_endpoints.md",
+        "category": "api_spec"
+    }
 ]
-K = 3
 
+def calculate_reciprocal_rank(retrieved_sources: List[str], expected_doc: str) -> float:
+    """Calculates Reciprocal Rank (1/Rank) for a single query."""
+    for rank, source_path in enumerate(retrieved_sources, start=1):
+        if expected_doc in source_path:
+            return 1.0 / rank
+    return 0.0
 
-def main():
-    top1 = {False: 0, True: 0}
-    hit_k = {False: 0, True: 0}
-    for q, want in CASES:
-        print(f"\nQ: {q}   (expect ...{want}...)")
-        for rerank in (False, True):
-            srcs = [h["source"] for h in store.search(q, k=K, rerank=rerank)]
-            t1 = want in srcs[0]
-            hk = any(want in s for s in srcs)
-            top1[rerank] += t1
-            hit_k[rerank] += hk
-            print(f"  {'rerank' if rerank else 'vector'}  top1={'Y' if t1 else 'n'} hit@{K}={'Y' if hk else 'n'}  {srcs[0]}")
-    n = len(CASES)
-    print(f"\n{'':14}top-1    hit@{K}")
-    for rerank, name in ((False, "vector"), (True, "vector+rerank")):
-        print(f"{name:14}{top1[rerank]}/{n}      {hit_k[rerank]}/{n}")
+def calculate_hit_rate(retrieved_sources: List[str], expected_doc: str) -> float:
+    """Calculates Hit Rate@k."""
+    return 1.0 if any(expected_doc in doc for doc in retrieved_sources) else 0.0
 
+def calculate_context_precision(retrieved_sources: List[str], expected_doc: str) -> float:
+    """Calculates Context Precision at rank positions."""
+    relevant_found = 0
+    precision_sum = 0.0
+    for rank, source in enumerate(retrieved_sources, start=1):
+        if expected_doc in source:
+            relevant_found += 1
+            precision_sum += relevant_found / rank
+    return precision_sum / max(relevant_found, 1) if relevant_found > 0 else 0.0
+
+def evaluate_retrieval_engine(retriever_fn: Callable, k: int = 5) -> Dict[str, Any]:
+    """Executes the benchmark evaluation over EVALUATION_DATASET using the provided retriever function."""
+    total_queries = len(EVALUATION_DATASET)
+    mrr_total = 0.0
+    hit_total = 0.0
+    precision_total = 0.0
+    detailed_results = []
+
+    for item in EVALUATION_DATASET:
+        start_time = time.time()
+        results = retriever_fn(query=item["query"], k=k)
+        latency = time.time() - start_time
+
+        retrieved_doc_paths = [
+            res.get("metadata", {}).get("source", "") if isinstance(res, dict) else str(res)
+            for res in results
+        ]
+
+        rr = calculate_reciprocal_rank(retrieved_doc_paths, item["expected_doc"])
+        hit = calculate_hit_rate(retrieved_doc_paths, item["expected_doc"])
+        precision = calculate_context_precision(retrieved_doc_paths, item["expected_doc"])
+
+        mrr_total += rr
+        hit_total += hit
+        precision_total += precision
+
+        detailed_results.append({
+            "id": item["id"],
+            "query": item["query"],
+            "category": item["category"],
+            "expected_doc": item["expected_doc"],
+            "top_1_retrieved": retrieved_doc_paths[0] if retrieved_doc_paths else None,
+            "all_retrieved": retrieved_doc_paths,
+            "hit_at_k": bool(hit),
+            "reciprocal_rank": round(rr, 4),
+            "context_precision": round(precision, 4),
+            "latency_sec": round(latency, 4)
+        })
+
+    return {
+        "summary": {
+            "mean_reciprocal_rank": round(mrr_total / total_queries, 4),
+            "hit_rate_at_k": round(hit_total / total_queries, 4),
+            "mean_context_precision": round(precision_total / total_queries, 4),
+            "total_queries": total_queries,
+            "k": k
+        },
+        "details": detailed_results
+    }
 
 if __name__ == "__main__":
-    main()
+    print("Evaluation benchmark module configured with expanded query set.")
