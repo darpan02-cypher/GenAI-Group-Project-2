@@ -4,6 +4,11 @@
 
 > Status: all three MCP servers working. See [SPEC.md](SPEC.md) and [PLAN.md](PLAN.md).
 
+## Demo
+[Watch the CodeMax demo video](CodeMax_demo.mp4)
+
+<video src="CodeMax_demo.mp4" controls width="720"></video>
+
 ## Setup
 ```
 python3 -m venv .venv && source .venv/bin/activate
